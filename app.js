@@ -53,6 +53,7 @@ async function request(url,{method='GET',body,cap=32e6,binary=false,onChunk}={})
  finally{clearTimeout(timer);parent.removeEventListener('abort',abort);reader?.releaseLock();}
 }
 async function run(){
+ if(window.SpeedDeckTraffic?.isRunning()){show('status','流量消耗正在运行，请先到流量消耗页暂停。');return {status:'busy'};}
  if(running)throw new Error('测速正在进行');let node;
  try{node=selectedNode();}catch(e){show('status',e.message);$('status').classList.add('error');return {status:'invalid',error:e.message};}
  reset();running=true;controller=new AbortController();bytesUsed=0;result={status:'running',nodeId:node.id,node:node.name,endpoint:node.base};
