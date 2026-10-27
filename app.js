@@ -19,6 +19,7 @@ const NODES=[
  {id:'ctcc',group:'国内三网候选 · 需本机检测',name:'中国电信 · 江苏苏州 5G（候选）',kind:'ookla',base:'https://4gsuzhou1.speedtest.jsinfo.net.prod.hosts.ooklaserver.net:8080/speedtest/',hint:'公开清单中的电信江苏节点；当前环境未连通，需在你的网络中检测。'},
  {id:'custom',group:'自定义',name:'自定义测速接口',hint:'支持 LibreSpeed、Ookla HTTP 或一个允许跨域访问的下载文件。'}
 ];
+window.SpeedDeckNodes=Object.freeze(NODES.map(node=>Object.freeze({...node})));
 let running=false,controller=null,bytesUsed=0,result={status:'idle'},stage='';
 function show(id,value){$(id).textContent=value;}
 function speed(value,label){show('speed',value.toFixed(1));show('speedLabel','Mbps · '+label);$('meterFill').style.strokeDashoffset=String(440*(1-Math.min(value/1000,1)));}

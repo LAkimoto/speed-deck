@@ -3,6 +3,8 @@
  const el=id=>document.getElementById(id);
  const put=(id,value)=>{el(id).textContent=value;};
  const CHUNK_BYTES=8_000_000, MAX_BYTES=1_000_000_000_000;
+ const sources=(window.SpeedDeckNodes||[{id:'cf',name:'Cloudflare · 自动路由',group:'海外服务',kind:'cf',base:'https://speed.cloudflare.com/'}]).filter(node=>node.kind==='cf'||node.kind==='libre');
+ let sessionNode=null;
  let state='idle',target=0,received=0,elapsedMs=0,startedAt=null;
  let active=false,controller=null,rate=0,clock=null,lastRateAt=0,lastRateBytes=0,lastPaint=0;
  const tabs=[el('speedTab'),el('trafficTab')];
@@ -17,7 +19,22 @@
    event.preventDefault();selectTab(key==='Home'?0:key==='End'?1:1-i,true);
   });
  });
- function formatBytes(bytes){return bytes>=1e9?[(bytes/1e9).toFixed(3),'GB']:[(bytes/1e6).toFixed(2),'MB'];}
+ function selectedSource(){
+  const node=sources.find(item=>item.id===el('trafficEndpoint').value);
+  if(!node)throw new Error('请选择有效的下载接口。');
+  return node;
+ }
+ function updateSource(node=selectedSource()){
+  put('trafficSource',node.name);
+  put('trafficEndpointHint',node.kind==='cf'?'自动路由节点；达到目标额度后停止下载。':'固定地区节点；暂停后可以更换接口继续，已消耗流量保留。');
+ }
+ function downloadUrl(node,bytes){
+  const url=new URL(node.kind==='cf'?'__down':'garbage.php',node.base);
+  if(node.kind==='cf')url.searchParams.set('bytes',String(bytes));
+  else{url.searchParams.set('cors','true');url.searchParams.set('ckSize',String(Math.max(1,Math.ceil(bytes/1048576))));}
+  url.searchParams.set('r',Date.now()+'-'+Math.random());return url.href;
+ }
+ function formatBytes(bytes){return bytes>=1e9?[(bytes/1e9).toFixed(3),'GB']:bytes>0&&bytes<1e6?[(bytes/1000).toFixed(2),'KB']:[(bytes/1e6).toFixed(2),'MB'];}
  function elapsed(){return elapsedMs+(active&&startedAt!==null?performance.now()-startedAt:0);}
  function render(){
   const [used,usedUnit]=formatBytes(received),[remaining,remainingUnit]=formatBytes(Math.max(0,target-received));
@@ -33,7 +50,7 @@
  function controls(){
   el('trafficStart').disabled=active;el('trafficPause').disabled=!active;el('trafficReset').disabled=active||state==='idle';
   const locked=state!=='idle'&&state!=='completed';
-  el('trafficAmount').disabled=active||locked;el('trafficUnit').disabled=active||locked;
+  el('trafficAmount').disabled=active||locked;el('trafficUnit').disabled=active||locked;el('trafficEndpoint').disabled=active;
   put('trafficStart',state==='paused'?'继续消耗':state==='completed'?'重新开始':'开始消耗');
  }
  function status(message,error=false){put('trafficStatus',message);el('trafficStatus').classList.toggle('error',error);}
@@ -50,7 +67,7 @@
  }
  function reset(){
   if(active)return;
-  state='idle';target=0;received=0;elapsedMs=0;startedAt=null;rate=0;controls();render();status('设置目标额度后开始，不会自动消耗流量。');
+  state='idle';target=0;received=0;elapsedMs=0;startedAt=null;rate=0;sessionNode=null;controls();render();updateSource();status('设置目标额度后开始，不会自动消耗流量。');
  }
  function delay(ms,signal){
   return new Promise((resolve,reject)=>{
@@ -59,15 +76,14 @@
    signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
   });
  }
- async function download(bytes,signal){
+ async function download(bytes,signal,node){
   const requestController=new AbortController(),abort=()=>requestController.abort();
   signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
   let timer,reader,readBytes=0;
   const watchdog=()=>{clearTimeout(timer);timer=setTimeout(abort,30_000);};
   watchdog();
   try{
-   const url=new URL('https://speed.cloudflare.com/__down');url.searchParams.set('bytes',String(bytes));url.searchParams.set('r',Date.now()+'-'+Math.random());
-   const response=await fetch(url.href,{cache:'no-store',credentials:'omit',mode:'cors',referrerPolicy:'no-referrer',signal:requestController.signal});
+   const response=await fetch(downloadUrl(node,bytes),{cache:'no-store',credentials:'omit',mode:'cors',referrerPolicy:'no-referrer',signal:requestController.signal});
    if(!response.ok)throw new Error('接口返回 HTTP '+response.status);
    const type=response.headers.get('content-type')||'';
    if(/text\/html|application\/json/i.test(type))throw new Error('接口返回的不是下载数据');
@@ -90,13 +106,15 @@
  async function start(){
   if(active)return;
   if(el('start').disabled){status('测速正在运行，请结束测速后再开始消耗。',true);return;}
+  let nextNode;try{nextNode=selectedSource();}catch(error){status(error.message,true);return;}
   if(state!=='paused'){
    let nextTarget;try{nextTarget=readTarget();}catch(error){status(error.message,true);return;}
    target=nextTarget;received=0;elapsedMs=0;rate=0;
   }
+  sessionNode=nextNode;updateSource(sessionNode);
   state='running';active=true;controller=new AbortController();const signal=controller.signal;
   startedAt=performance.now();lastRateAt=startedAt;lastRateBytes=received;
-  el('start').disabled=true;controls();render();status('持续下载中，达到目标额度自动停止。');
+  el('start').disabled=true;controls();render();status('正在从 '+sessionNode.name+' 下载，达到目标额度自动停止。');
   put('status','流量消耗正在运行，请先到流量消耗页暂停后再测速。');
   clock=setInterval(()=>{
    const now=performance.now(),dt=now-lastRateAt;
@@ -107,7 +125,7 @@
    while(received<target&&!signal.aborted){
     const before=received;
     try{
-     await download(Math.min(CHUNK_BYTES,target-received),signal);
+     await download(Math.min(CHUNK_BYTES,target-received),signal,sessionNode);
      if(!signal.aborted&&received===before)throw new Error('未收到数据');
      failures=0;
     }catch(error){
@@ -117,19 +135,27 @@
      if(failures>3)throw error;
      const wait=2000*2**(failures-1);
      status('下载中断，'+wait/1000+' 秒后重试（'+failures+'/3），已接收流量会保留。');
-     await delay(wait,signal);status('连接恢复中，继续消耗剩余流量…');
+     await delay(wait,signal);status('正在重新连接 '+sessionNode.name+'，继续消耗剩余流量…');
     }
    }
    if(received>=target){state='completed';status('已达到目标额度，下载已自动停止。');}
    else{state='paused';status('已暂停，点击“继续消耗”完成剩余额度。');}
   }catch(error){
-   state='paused';status(signal.aborted?'已暂停，已消耗流量会保留。':'连续重试失败，任务已暂停。可点击“继续消耗”重试。',!signal.aborted);
+   state='paused';status(signal.aborted?'已暂停，已消耗流量会保留。':'连续重试失败，任务已暂停。可更换接口后点击“继续消耗”。',!signal.aborted);
   }finally{
    clearInterval(clock);elapsedMs+=performance.now()-startedAt;startedAt=null;active=false;controller=null;rate=0;
    el('start').disabled=false;put('status',state==='completed'?'流量消耗已完成，可以开始测速。':'流量消耗已暂停，可以开始测速。');
    controls();render();
   }
  }
+ let group;
+ for(const node of sources){
+  if(!group||group.label!==node.group){group=document.createElement('optgroup');group.label=node.group;el('trafficEndpoint').append(group);}
+  const option=document.createElement('option');option.value=node.id;option.textContent=node.name;group.append(option);
+ }
+ el('trafficEndpoint').value=sources.some(node=>node.id==='cf')?'cf':sources[0]?.id||'';
+ el('trafficEndpoint').addEventListener('change',()=>{if(!active)updateSource();});
+ updateSource();
  el('trafficStart').addEventListener('click',()=>{void start();});el('trafficPause').addEventListener('click',pause);el('trafficReset').addEventListener('click',reset);
  window.addEventListener('pagehide',()=>controller?.abort());
  window.SpeedDeckTraffic={isRunning:()=>active};
