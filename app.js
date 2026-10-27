@@ -5,6 +5,15 @@ const NODES=[
  {id:'la',group:'海外服务',name:'美国洛杉矶 · Sharktech',kind:'libre',base:'https://laxspeed.sharktech.net/backend/',hint:'LibreSpeed 公开节点，当前浏览器直接测速。'},
  {id:'fra',group:'海外服务',name:'德国法兰克福 · Clouvider',kind:'libre',base:'https://fra.speedtest.clouvider.net/backend/',hint:'LibreSpeed 公开节点，当前浏览器直接测速。'},
  {id:'tokyo',group:'海外服务',name:'日本东京 · A573',kind:'libre',base:'https://librespeed.a573.net/backend/',hint:'LibreSpeed 公开节点，当前浏览器直接测速。'},
+ // Public source: https://librespeed.org/backend-servers/servers.php
+ // Verified 2026-10-27: HTTPS certificate, wildcard CORS, six ping requests,
+ // 1/5/20 MiB downloads and 0.25/1/3 MB uploads within frontend timeouts.
+ {"id":"ls-49","group":"新增已验证节点 · 2026-10-27","name":"英国伦敦 · Clouvider","kind":"libre","base":"https://lon.speedtest.clouvider.net/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
+ {"id":"ls-51","group":"新增已验证节点 · 2026-10-27","name":"荷兰阿姆斯特丹 · Clouvider","kind":"libre","base":"https://ams.speedtest.clouvider.net/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
+ {"id":"ls-52","group":"新增已验证节点 · 2026-10-27","name":"美国纽约 · Clouvider","kind":"libre","base":"https://nyc.speedtest.clouvider.net/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
+ {"id":"ls-53","group":"新增已验证节点 · 2026-10-27","name":"美国亚特兰大 · Clouvider","kind":"libre","base":"https://atl.speedtest.clouvider.net/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
+ {"id":"ls-106","group":"新增已验证节点 · 2026-10-27","name":"塞尔维亚贝尔格莱德 · SOX","kind":"libre","base":"https://speedtest1.sox.rs/librespeed/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
+ {"id":"ls-79","group":"新增已验证节点 · 2026-10-27","name":"捷克布拉格 · CESNET","kind":"libre","base":"https://speedtest.cesnet.cz/backend/","hint":"2026-10-27 已通过 HTTPS、跨域、下载和上传验证；实际可用性与速率以当前网络为准。"},
  {id:'cmcc',group:'国内三网候选 · 需本机检测',name:'移动线路 · 苏州 JSQY（候选）',kind:'ookla',base:'https://speedtest.jsqiuying.com:8080/speedtest/',hint:'社区清单中的移动线路节点，非全国官方 API；HTTPS、端口和跨域可用性需本机检测。'},
  {id:'cucc',group:'国内三网候选 · 需本机检测',name:'中国联通 · 北京（候选）',kind:'ookla',base:'https://beijing.unicomtest.com:8080/speedtest/',hint:'公开清单中的联通北京节点；当前环境未连通，需在你的网络中检测。'},
  {id:'ctcc',group:'国内三网候选 · 需本机检测',name:'中国电信 · 江苏苏州 5G（候选）',kind:'ookla',base:'https://4gsuzhou1.speedtest.jsinfo.net.prod.hosts.ooklaserver.net:8080/speedtest/',hint:'公开清单中的电信江苏节点；当前环境未连通，需在你的网络中检测。'},
